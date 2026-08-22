@@ -1,0 +1,11 @@
+{{ define "synthnow.pagerduty.description" }}
+[Niko The Great - SYNTH NOW] {{ .Status | toUpper }}: {{ .CommonAnnotations.summary }}
+{{ .CommonAnnotations.description }}
+Service={{ .CommonLabels.service }} Severity={{ .CommonLabels.severity }} Environment={{ .CommonLabels.environment }} Runbook={{ .CommonLabels.runbook }}
+{{ end }}
+
+{{ define "synthnow.pagerduty.firing" }}
+{{ range .Alerts.Firing -}}
+- {{ .Labels.alertname }}: {{ .Annotations.summary }} (starts {{ .StartsAt }})
+{{ end }}
+{{ end }}

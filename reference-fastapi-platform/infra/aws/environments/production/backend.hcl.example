@@ -1,0 +1,8 @@
+# Create the state bucket, DynamoDB lock table, and state KMS key in a separately bootstrapped,
+# tightly controlled AWS account or platform stack before running `terraform init`.
+bucket         = "REPLACE-WITH-PRIVATE-TERRAFORM-STATE-BUCKET"
+key            = "niko-synth-now/production/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "REPLACE-WITH-TERRAFORM-STATE-LOCK-TABLE"
+encrypt        = true
+kms_key_id     = "REPLACE-WITH-STATE-KMS-KEY-ARN"

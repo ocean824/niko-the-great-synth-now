@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Niko The Great - SYNTH NOW | Multi-Region Topology</title>
+  <style>
+    :root {
+      --ink: #e7eef9;
+      --muted: #a8b7ca;
+      --canvas: #07111f;
+      --panel: #0d1b2d;
+      --panel-2: #12263f;
+      --line: #2a4260;
+      --primary: #45b9ff;
+      --secondary: #bd8cff;
+      --data: #47d3a5;
+      --warning: #ffbb57;
+      --danger: #ff6b7d;
+      --focus: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .shell { max-width: 1500px; margin: 0 auto; padding: 28px; }
+    header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .eyebrow { margin: 0 0 8px; color: var(--data); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(26px, 4vw, 42px); letter-spacing: -.04em; }
+    .subtitle { max-width: 760px; margin: 10px 0 0; color: var(--muted); line-height: 1.55; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { border: 1px solid #355270; background: #102137; color: var(--ink); border-radius: 999px; padding: 9px 13px; cursor: pointer; font-weight: 700; }
+    button:hover, button[aria-pressed="true"] { background: #1b3859; border-color: var(--primary); }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; }
+    .map-card, .detail-card, .legend, .note { border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(155deg, rgba(20,43,70,.92), rgba(8,20,34,.95)); }
+    .map-card { overflow: auto; min-height: 720px; }
+    svg { display: block; min-width: 1080px; width: 100%; height: auto; }
+    .detail-card { padding: 22px; align-self: start; position: sticky; top: 18px; }
+    .detail-card h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.02em; }
+    .detail-card p { color: var(--muted); line-height: 1.55; }
+    .meta { display: grid; gap: 10px; margin-top: 18px; }
+    .meta div { border-top: 1px solid var(--line); padding-top: 10px; }
+    .meta b { display: block; font-size: 11px; color: var(--data); text-transform: uppercase; letter-spacing: .09em; }
+    .meta span { display: block; margin-top: 3px; font-size: 14px; line-height: 1.45; }
+    .legend { padding: 14px 18px; margin-top: 18px; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 15px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .note { padding: 15px 18px; margin-top: 18px; color: var(--muted); line-height: 1.5; font-size: 13px; }
+    .note strong { color: var(--warning); }
+    .region { stroke-width: 2; }
+    .region.primary { fill: #0b2b49; stroke: #227daf; }
+    .region.secondary { fill: #251845; stroke: #8956c5; }
+    .node { cursor: pointer; transition: opacity .2s ease, filter .2s ease; }
+    .node rect { stroke-width: 1.5; }
+    .node text { fill: var(--ink); font-size: 14px; font-weight: 700; pointer-events: none; }
+    .node .sub { fill: #b5c7dd; font-size: 11px; font-weight: 500; }
+    .node.primary rect { fill: #103d64; stroke: var(--primary); }
+    .node.secondary rect { fill: #41246e; stroke: var(--secondary); }
+    .node.data rect { fill: #12463b; stroke: var(--data); }
+    .node.control rect { fill: #5b3813; stroke: var(--warning); }
+    .node.active rect, .node:focus rect { stroke: var(--focus); stroke-width: 3; filter: drop-shadow(0 0 10px rgba(255,255,255,.4)); }
+    .node.dim { opacity: .21; }
+    .link { fill: none; stroke: #7693b4; stroke-width: 2.2; marker-end: url(#arrow); }
+    .link.replication { stroke: var(--data); stroke-dasharray: 7 5; }
+    .link.control { stroke: var(--warning); stroke-dasharray: 6 6; }
+    .link.dim { opacity: .12; }
+    .label { fill: #cbd8e7; font-size: 11px; }
+    .region-label { fill: #dcecff; font-size: 18px; font-weight: 800; }
+    .region-sub { fill: #a9c0dc; font-size: 12px; }
+    @media (max-width: 980px) { main { grid-template-columns: 1fr; } .detail-card { position: static; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Niko The Great - SYNTH NOW</p>
+        <h1>Multi-Region AWS Topology</h1>
+        <p class="subtitle">Click a component to inspect its purpose, recovery role, and operational controls. Use region filters to trace primary, secondary, or replication paths from the Terraform foundation.</p>
+      </div>
+      <div class="controls" role="group" aria-label="Topology filters">
+        <button data-filter="all" aria-pressed="true">All paths</button>
+        <button data-filter="primary" aria-pressed="false">Primary region</button>
+        <button data-filter="secondary" aria-pressed="false">Secondary region</button>
+        <button data-filter="replication" aria-pressed="false">Replication paths</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="map-card" aria-label="Interactive architecture map">
+        <svg viewBox="0 0 1240 780" role="img" aria-labelledby="topology-title topology-desc">
+          <title id="topology-title">Synth Now multi-region AWS architecture</title>
+          <desc id="topology-desc">Primary and secondary private AWS regions with EKS, Aurora PostgreSQL plus pgvector, Redis, S3, ECR, observability, workload identity, and encrypted replication flows.</desc>
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7693b4" /></marker>
+          </defs>
+
+          <rect class="region primary" x="35" y="70" width="525" height="650" rx="22" />
+          <text class="region-label" x="60" y="106">Primary AWS Region</text>
+          <text class="region-sub" x="60" y="128">Private VPC • Multi-AZ • active writer/data source</text>
+          <rect class="region secondary" x="680" y="70" width="525" height="650" rx="22" />
+          <text class="region-label" x="705" y="106">Secondary AWS Region</text>
+          <text class="region-sub" x="705" y="128">Private VPC • Multi-AZ • warm recovery / read role</text>
+
+          <g class="links">
+            <path class="link control" data-flow="control primary secondary" d="M620 47 C620 79, 360 25, 300 175" />
+            <path class="link control" data-flow="control primary secondary" d="M620 47 C620 79, 892 25, 945 175" />
+            <path class="link" data-flow="primary" d="M300 240 L170 310" />
+            <path class="link" data-flow="primary" d="M300 240 L420 310" />
+            <path class="link" data-flow="primary" d="M300 240 L170 455" />
+            <path class="link" data-flow="primary" d="M300 240 L420 455" />
+            <path class="link" data-flow="primary" d="M300 240 L300 590" />
+            <path class="link" data-flow="secondary" d="M945 240 L815 310" />
+            <path class="link" data-flow="secondary" d="M945 240 L1065 310" />
+            <path class="link" data-flow="secondary" d="M945 240 L815 455" />
+            <path class="link" data-flow="secondary" d="M945 240 L1065 455" />
+            <path class="link" data-flow="secondary" d="M945 240 L945 590" />
+            <path class="link replication" data-flow="replication" d="M480 350 C610 320, 640 320, 760 350" />
+            <path class="link replication" data-flow="replication" d="M480 495 C610 475, 640 475, 760 495" />
+            <path class="link replication" data-flow="replication" d="M480 640 C610 620, 640 620, 760 640" />
+            <path class="link replication" data-flow="replication" d="M480 560 C610 540, 640 540, 1005 495" />
+          </g>
+
+          <text class="label" x="535" y="325">Aurora Global DB</text>
+          <text class="label" x="530" y="475">Redis Global Datastore</text>
+          <text class="label" x="535" y="615">Encrypted S3 replication</text>
+          <text class="label" x="635" y="535">ECR image replication</text>
+
+          <g class="node control" tabindex="0" role="button" data-id="traffic" transform="translate(485,15)"><rect width="270" height="48" rx="10"/><text x="135" y="22" text-anchor="middle">Global traffic steering</text><text class="sub" x="135" y="38" text-anchor="middle">Operational prerequisite; not Terraform-provisioned</text></g>
+
+          <g class="node primary" tabindex="0" role="button" data-id="p-eks" transform="translate(200,175)"><rect width="200" height="65" rx="12"/><text x="100" y="27" text-anchor="middle">Private EKS</text><text class="sub" x="100" y="45" text-anchor="middle">API + audio workers</text></g>
+          <g class="node data primary" tabindex="0" role="button" data-id="p-aurora" transform="translate(80,310)"><rect width="180" height="75" rx="12"/><text x="90" y="28" text-anchor="middle">Aurora PostgreSQL</text><text class="sub" x="90" y="46" text-anchor="middle">pgvector • global writer</text><text class="sub" x="90" y="61" text-anchor="middle">canonical claims + vectors</text></g>
+          <g class="node data primary" tabindex="0" role="button" data-id="p-redis" transform="translate(340,310)"><rect width="180" height="75" rx="12"/><text x="90" y="28" text-anchor="middle">ElastiCache Redis</text><text class="sub" x="90" y="46" text-anchor="middle">global datastore primary</text><text class="sub" x="90" y="61" text-anchor="middle">cache + bounded sessions</text></g>
+          <g class="node primary" tabindex="0" role="button" data-id="p-ecr" transform="translate(80,455)"><rect width="180" height="62" rx="12"/><text x="90" y="26" text-anchor="middle">ECR</text><text class="sub" x="90" y="45" text-anchor="middle">immutable, scanned images</text></g>
+          <g class="node data primary" tabindex="0" role="button" data-id="p-s3" transform="translate(340,455)"><rect width="180" height="62" rx="12"/><text x="90" y="26" text-anchor="middle">Encrypted S3</text><text class="sub" x="90" y="45" text-anchor="middle">private artifacts + logs</text></g>
+          <g class="node primary" tabindex="0" role="button" data-id="p-obs" transform="translate(80,590)"><rect width="180" height="65" rx="12"/><text x="90" y="26" text-anchor="middle">Observability</text><text class="sub" x="90" y="45" text-anchor="middle">CloudWatch • Prometheus</text><text class="sub" x="90" y="59" text-anchor="middle">Alertmanager • Grafana</text></g>
+          <g class="node primary" tabindex="0" role="button" data-id="p-irsa" transform="translate(340,590)"><rect width="180" height="65" rx="12"/><text x="90" y="26" text-anchor="middle">EKS OIDC / IRSA</text><text class="sub" x="90" y="45" text-anchor="middle">least-privilege workload</text><text class="sub" x="90" y="59" text-anchor="middle">identity + secret access</text></g>
+
+          <g class="node secondary" tabindex="0" role="button" data-id="s-eks" transform="translate(845,175)"><rect width="200" height="65" rx="12"/><text x="100" y="27" text-anchor="middle">Private EKS</text><text class="sub" x="100" y="45" text-anchor="middle">warm standby / recovery</text></g>
+          <g class="node data secondary" tabindex="0" role="button" data-id="s-aurora" transform="translate(725,310)"><rect width="180" height="75" rx="12"/><text x="90" y="28" text-anchor="middle">Aurora PostgreSQL</text><text class="sub" x="90" y="46" text-anchor="middle">pgvector • secondary reader</text><text class="sub" x="90" y="61" text-anchor="middle">promotion under fenced DR</text></g>
+          <g class="node data secondary" tabindex="0" role="button" data-id="s-redis" transform="translate(985,310)"><rect width="180" height="75" rx="12"/><text x="90" y="28" text-anchor="middle">ElastiCache Redis</text><text class="sub" x="90" y="46" text-anchor="middle">global datastore secondary</text><text class="sub" x="90" y="61" text-anchor="middle">rebuildable acceleration</text></g>
+          <g class="node secondary" tabindex="0" role="button" data-id="s-ecr" transform="translate(725,455)"><rect width="180" height="62" rx="12"/><text x="90" y="26" text-anchor="middle">ECR</text><text class="sub" x="90" y="45" text-anchor="middle">replicated approved images</text></g>
+          <g class="node data secondary" tabindex="0" role="button" data-id="s-s3" transform="translate(985,455)"><rect width="180" height="62" rx="12"/><text x="90" y="26" text-anchor="middle">Encrypted S3</text><text class="sub" x="90" y="45" text-anchor="middle">replicated artifacts + logs</text></g>
+          <g class="node secondary" tabindex="0" role="button" data-id="s-obs" transform="translate(725,590)"><rect width="180" height="65" rx="12"/><text x="90" y="26" text-anchor="middle">Observability</text><text class="sub" x="90" y="45" text-anchor="middle">regional metrics + logs</text><text class="sub" x="90" y="59" text-anchor="middle">recovery visibility</text></g>
+          <g class="node secondary" tabindex="0" role="button" data-id="s-irsa" transform="translate(985,590)"><rect width="180" height="65" rx="12"/><text x="90" y="26" text-anchor="middle">EKS OIDC / IRSA</text><text class="sub" x="90" y="45" text-anchor="middle">regional workload roles</text><text class="sub" x="90" y="59" text-anchor="middle">least privilege</text></g>
+        </svg>
+      </section>
+
+      <aside class="detail-card" aria-live="polite">
+        <p class="eyebrow">Component detail</p>
+        <h2 id="detail-title">Explore the topology</h2>
+        <p id="detail-copy">Select any component in the topology to see its operational role. The map distinguishes Terraform-provisioned resources from a traffic-steering prerequisite that must be added and tested before automated regional failover.</p>
+        <div class="meta">
+          <div><b>Region / scope</b><span id="detail-region">All regions</span></div>
+          <div><b>Recovery role</b><span id="detail-recovery">Primary writer and secondary recovery paths are intentionally distinct.</span></div>
+          <div><b>Chaos game-day focus</b><span id="detail-chaos">Baseline, scoped fault injection, continuous probes, and explicit recovery checks.</span></div>
+        </div>
+      </aside>
+    </main>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background:var(--primary)"></span>Primary region component</div>
+      <div class="legend-item"><span class="dot" style="background:var(--secondary)"></span>Secondary region component</div>
+      <div class="legend-item"><span class="dot" style="background:var(--data)"></span>Data / replicated storage</div>
+      <div class="legend-item"><span class="dot" style="background:var(--warning)"></span>Operational prerequisite</div>
+      <div class="legend-item"><span style="color:var(--data);font-weight:900">- - -</span>Encrypted/global replication path</div>
+    </div>
+    <div class="note"><strong>Current-plan accuracy:</strong> EKS, Aurora Global Database resources, ElastiCache Global Datastore members, S3 replication, ECR replication, CloudWatch/SNS, and IRSA are represented from the Terraform foundation. Global traffic steering is deliberately marked as an operational prerequisite because it is not yet created by the current Terraform module.</div>
+  </div>
+
+  <script>
+    const details = {
+      traffic: { title: "Global traffic steering", region: "Cross-region prerequisite", copy: "A controlled global route manager is needed before automated primary-to-secondary traffic shifting can be exercised. It is shown as a prerequisite because the present Terraform does not provision it.", recovery: "Use only after secondary readiness and data-role checks pass; never shift around an unresolved data-integrity event.", chaos: "GD-1 validates controlled staging route behavior only after this component is explicitly designed, provisioned, and approved." },
+      "p-eks": { title: "Primary private EKS", region: "Primary AWS Region", copy: "Hosts the FastAPI service and audio workers inside private subnets. Workload scaling, metrics, and guarded fault injection are centered here.", recovery: "Primary active service path. Scale only within Aurora, Redis, and object-storage capacity budgets.", chaos: "Target only labeled staging canary workloads; test regional application isolation and bounded database-path delay." },
+      "s-eks": { title: "Secondary private EKS", region: "Secondary AWS Region", copy: "Warm recovery environment using replicated images, regional identity, storage access, and observability. It is not assumed ready without explicit checks.", recovery: "Serves controlled recovery traffic after its workload, secrets, replicated assets, and data role are verified.", chaos: "GD-3 verifies readiness; do not route traffic here solely because infrastructure exists." },
+      "p-aurora": { title: "Aurora PostgreSQL + pgvector writer", region: "Primary AWS Region", copy: "Canonical records, evidence, moderation, fingerprints, and vector data live here. PostgreSQL remains authoritative over Redis.", recovery: "Global Database writer. Promotion/failover follows the fenced data-recovery runbook, not an application-only drill.", chaos: "GD-2 injects limited database-path latency against a staging canary; never force writer promotion in the first game day." },
+      "s-aurora": { title: "Aurora PostgreSQL + pgvector secondary", region: "Secondary AWS Region", copy: "Replicated data role for regional recovery. Its schema, extensions, indexes, vector registry, and sample query behavior require validation after promotion.", recovery: "Secondary reader until an explicitly authorized, fenced global-database recovery action promotes it.", chaos: "GD-3 verifies role/replication health; Aurora promotion is a separately scoped data-recovery exercise." },
+      "p-redis": { title: "Primary ElastiCache Redis", region: "Primary AWS Region", copy: "Accelerates reviewed preset queries and holds a bounded session projection after JWT validation. It never acts as canonical authorization or production evidence storage.", recovery: "Cache/session acceleration; application falls back safely to PostgreSQL within headroom during an outage.", chaos: "Observe cache fallback and database pressure; abort on authorization inconsistency or database saturation." },
+      "s-redis": { title: "Secondary ElastiCache Redis", region: "Secondary AWS Region", copy: "Global Datastore secondary supports recovery-region acceleration and can be rebuilt from canonical data and verified identity.", recovery: "Rebuildable; never use it as the source of truth for data recovery or privileged access.", chaos: "Validate global datastore role and bounded fallback behavior during regional readiness checks." },
+      "p-s3": { title: "Primary encrypted S3", region: "Primary AWS Region", copy: "Private artifacts and logs use KMS encryption, versioning, public-access blocks, and replication policies.", recovery: "Primary source bucket replicates approved objects to the secondary region.", chaos: "Use synthetic artifacts only; verify replication and access policy without opening public access." },
+      "s-s3": { title: "Secondary encrypted S3", region: "Secondary AWS Region", copy: "Receives encrypted replicated artifacts and logs required for recovery-region workloads and evidence continuity.", recovery: "Availability of expected synthetic artifacts is a secondary-region readiness gate.", chaos: "GD-3 checks replicated-object availability and denies production/customer media scope." },
+      "p-ecr": { title: "Primary ECR", region: "Primary AWS Region", copy: "Stores immutable, scanned application images that are replicated by digest to the secondary registry.", recovery: "Approved image digest must be available before recovery deployment.", chaos: "Confirm the recovery region uses the same approved digest; do not rebuild unreviewed images during an event." },
+      "s-ecr": { title: "Secondary ECR", region: "Secondary AWS Region", copy: "Holds replicated image artifacts for recovery deployment.", recovery: "Recovery EKS must pull a verified immutable digest from this regional registry.", chaos: "GD-3 validates image availability and workload start without changing the image under test." },
+      "p-obs": { title: "Primary observability", region: "Primary AWS Region", copy: "CloudWatch, Prometheus, Alertmanager, Grafana, and service metrics provide baseline, continuous, and recovery evidence.", recovery: "Monitoring is required before recovery actions are considered complete.", chaos: "Synthetic alerts must use the discard route; metrics include vector latency, queue depth, cache fallback, and API health." },
+      "s-obs": { title: "Secondary observability", region: "Secondary AWS Region", copy: "Regional telemetry verifies recovery readiness and helps distinguish an application issue from a regional failure.", recovery: "Must be reachable and populated before controlled recovery traffic shift.", chaos: "GD-3 validates dashboards/logs/alerts before testing secondary serving behavior." },
+      "p-irsa": { title: "Primary EKS OIDC / IRSA", region: "Primary AWS Region", copy: "Associates Kubernetes workloads with least-privilege AWS roles rather than static node credentials.", recovery: "Role access is regional and must be validated alongside any deployment/recovery move.", chaos: "Do not bypass workload identity during experiments; a broken role is an observable failed readiness control." },
+      "s-irsa": { title: "Secondary EKS OIDC / IRSA", region: "Secondary AWS Region", copy: "Provides recovery-region workloads scoped access to required regional secrets, logs, and replicated artifacts.", recovery: "A secondary workload cannot be called ready until role and secret access checks pass.", chaos: "GD-3 includes non-destructive workload identity validation against only approved staging resources." }
+    };
+
+    const nodes = [...document.querySelectorAll('.node')];
+    const links = [...document.querySelectorAll('.link')];
+    const title = document.getElementById('detail-title');
+    const copy = document.getElementById('detail-copy');
+    const region = document.getElementById('detail-region');
+    const recovery = document.getElementById('detail-recovery');
+    const chaos = document.getElementById('detail-chaos');
+
+    function selectNode(node) {
+      nodes.forEach(n => n.classList.toggle('active', n === node));
+      const data = details[node.dataset.id];
+      title.textContent = data.title;
+      copy.textContent = data.copy;
+      region.textContent = data.region;
+      recovery.textContent = data.recovery;
+      chaos.textContent = data.chaos;
+    }
+    nodes.forEach(node => {
+      node.addEventListener('click', () => selectNode(node));
+      node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(node); } });
+    });
+
+    document.querySelectorAll('[data-filter]').forEach(button => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.filter;
+        document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+        nodes.forEach(node => {
+          const relevant = mode === 'all' || node.classList.contains(mode) || (mode === 'replication' && node.classList.contains('data'));
+          node.classList.toggle('dim', !relevant);
+        });
+        links.forEach(link => link.classList.toggle('dim', mode !== 'all' && !link.dataset.flow.includes(mode)));
+      });
+    });
+  </script>
+</body>
+</html>

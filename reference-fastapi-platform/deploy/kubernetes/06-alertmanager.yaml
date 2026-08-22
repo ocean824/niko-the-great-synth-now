@@ -1,0 +1,95 @@
+# Use this deployment when the cluster does not already provide Alertmanager through a managed
+# observability stack. PagerDuty routing keys are mounted from a namespace-scoped secret, never a
+# ConfigMap or image layer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: synth-now-alertmanager
+  namespace: synth-now
+  labels:
+    app.kubernetes.io/name: synth-now-alertmanager
+spec:
+  selector:
+    app.kubernetes.io/name: synth-now-alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synth-now-alertmanager
+  namespace: synth-now
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synth-now-alertmanager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synth-now-alertmanager
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.28.1
+          args:
+            - --config.file=/etc/alertmanager/alertmanager.yml
+            - --storage.path=/alertmanager
+          ports:
+            - name: http
+              containerPort: 9093
+          volumeMounts:
+            - name: configuration
+              mountPath: /etc/alertmanager/alertmanager.yml
+              subPath: alertmanager.yml
+              readOnly: true
+            - name: configuration
+              mountPath: /etc/alertmanager/templates/pagerduty.tmpl
+              subPath: pagerduty.tmpl
+              readOnly: true
+            - name: pagerduty-keys
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
+            - name: storage
+              mountPath: /alertmanager
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: configuration
+          configMap:
+            name: synth-now-alertmanager-config
+        - name: pagerduty-keys
+          secret:
+            secretName: synth-now-pagerduty-routing-keys
+        - name: storage
+          emptyDir: {}

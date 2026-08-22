@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synth-now
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: synth-now-config
+  namespace: synth-now
+data:
+  LOG_LEVEL: "INFO"
+  SYNTH_NOW_UPLOAD_DIR: "/app/private_uploads"
+  SYNTH_NOW_WORKER_POLL_INTERVAL_SECONDS: "1"
+  SYNTH_NOW_WORKER_METRICS_PORT: "9100"
+  SYNTH_NOW_AUTH_MODE: "oauth_jwt"
+---
+# Apply a real secret from your secret manager or sealed-secret workflow.
+# This example is intentionally not applied by kustomization.yaml.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: synth-now-secret-example
+  namespace: synth-now
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql+psycopg://synthnow:CHANGE_ME@synth-now-postgres:5432/synthnow"
+  SYNTH_NOW_RESULT_TOKEN_SIGNING_KEY: "CHANGE_ME_USE_A_SECRET_MANAGER"
+  SYNTH_NOW_ALLOWED_ORIGINS: "https://app.example.com"
+  SYNTH_NOW_METRICS_TOKEN: "CHANGE_ME_USE_A_SECRET_MANAGER"
+  SYNTH_NOW_REDIS_URL: "redis://:CHANGE_ME@synth-now-redis:6379/0"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: synth-now-postgres-secret-example
+  namespace: synth-now
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "CHANGE_ME_USE_A_SECRET_MANAGER"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: synth-now-redis-secret-example
+  namespace: synth-now
+type: Opaque
+stringData:
+  REDIS_PASSWORD: "CHANGE_ME_USE_A_SECRET_MANAGER"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: synth-now-pagerduty-routing-keys-example
+  namespace: synth-now
+type: Opaque
+stringData:
+  pagerduty-critical-routing-key: "CHANGE_ME_CREATE_EVENTS_API_V2_INTEGRATION"
+  pagerduty-warning-routing-key: "CHANGE_ME_CREATE_LOW_URGENCY_EVENTS_API_V2_INTEGRATION"

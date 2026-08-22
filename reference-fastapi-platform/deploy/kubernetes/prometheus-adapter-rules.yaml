@@ -1,0 +1,22 @@
+# Merge this `rules` block into the values/configuration of the Prometheus Adapter installed in the
+# monitoring namespace. It is a template: confirm the final `namespace` and `service` labels in
+# your Prometheus target page before enabling HPA external metrics in production.
+rules:
+  - seriesQuery: 'synthnow_http_requests_total{namespace!="",service="synth-now-api"}'
+    resources:
+      overrides:
+        namespace:
+          resource: namespace
+    name:
+      matches: '^synthnow_http_requests_total$'
+      as: 'synthnow_api_rps'
+    metricsQuery: 'sum(rate(synthnow_http_requests_total{service="synth-now-api"}[1m])) by (<<.GroupBy>>)' 
+  - seriesQuery: 'synthnow_audio_job_queue_depth{namespace!="",service="audio-worker"}'
+    resources:
+      overrides:
+        namespace:
+          resource: namespace
+    name:
+      matches: '^synthnow_audio_job_queue_depth$'
+      as: 'synthnow_audio_job_queue_depth'
+    metricsQuery: 'max(synthnow_audio_job_queue_depth{service="audio-worker"}) by (<<.GroupBy>>)' 

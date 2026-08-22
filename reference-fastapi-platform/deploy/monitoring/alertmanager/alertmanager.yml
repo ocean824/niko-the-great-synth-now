@@ -1,0 +1,70 @@
+global:
+  resolve_timeout: 5m
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
+route:
+  receiver: discard
+  group_by: [alertname, service, environment, model_code, reference_role]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Synthetic smoke alerts are accepted by Alertmanager but deliberately discarded so validation
+    # never opens a real PagerDuty incident.
+    - matchers:
+        - synthetic="true"
+      receiver: discard
+      continue: false
+    - matchers:
+        - severity="critical"
+      receiver: pagerduty-critical
+      group_wait: 15s
+      group_interval: 5m
+      repeat_interval: 1h
+      continue: false
+    - matchers:
+        - severity="warning"
+      receiver: pagerduty-warning
+      group_wait: 5m
+      group_interval: 30m
+      repeat_interval: 8h
+      continue: false
+
+inhibit_rules:
+  # A critical symptom for a service supersedes its matching warning notification.
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal: [service, environment]
+
+receivers:
+  - name: discard
+  - name: pagerduty-critical
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/pagerduty-critical-routing-key
+        severity: critical
+        description: '{{ template "synthnow.pagerduty.description" . }}'
+        client: "Niko The Great - SYNTH NOW Alertmanager"
+        client_url: "https://grafana.example.com/d/synth-now-operations"
+        details:
+          alert_group: '{{ .GroupLabels }}'
+          common_labels: '{{ .CommonLabels }}'
+          common_annotations: '{{ .CommonAnnotations }}'
+          runbook: '{{ .CommonLabels.runbook }}'
+          firing_alerts: '{{ template "synthnow.pagerduty.firing" . }}'
+  - name: pagerduty-warning
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/pagerduty-warning-routing-key
+        severity: warning
+        description: '{{ template "synthnow.pagerduty.description" . }}'
+        client: "Niko The Great - SYNTH NOW Alertmanager"
+        client_url: "https://grafana.example.com/d/synth-now-operations"
+        details:
+          alert_group: '{{ .GroupLabels }}'
+          common_labels: '{{ .CommonLabels }}'
+          common_annotations: '{{ .CommonAnnotations }}'
+          runbook: '{{ .CommonLabels.runbook }}'
+          firing_alerts: '{{ template "synthnow.pagerduty.firing" . }}'

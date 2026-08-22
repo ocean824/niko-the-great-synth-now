@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: synth-now
+resources:
+  - 00-foundation.yaml
+  - 01-postgres.yaml
+  - 02-api-worker.yaml
+  - 03-edge-and-scaling.yaml
+  - 05-redis.yaml
+  - 06-alertmanager.yaml
+configMapGenerator:
+  - name: synth-now-bootstrap-migrations
+    files:
+      - migrations/001_preset_ingestion_and_audio_vectors.sql
+  - name: synth-now-alertmanager-config
+    files:
+      - alertmanager/alertmanager.yml
+      - alertmanager/pagerduty.tmpl
+generatorOptions:
+  disableNameSuffixHash: true

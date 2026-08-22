@@ -1,0 +1,44 @@
+# Apply only when the Prometheus Operator CRDs are installed (for example kube-prometheus-stack).
+# Create synth-now-metrics-token with key `token` in the synth-now namespace first.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: synth-now-api
+  namespace: synth-now
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synth-now-api
+  namespaceSelector:
+    matchNames: ["synth-now"]
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      bearerTokenSecret:
+        name: synth-now-metrics-token
+        key: token
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: synth-now-worker
+  namespace: synth-now
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synth-now-worker
+  namespaceSelector:
+    matchNames: ["synth-now"]
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      relabelings:
+        - targetLabel: service
+          replacement: audio-worker

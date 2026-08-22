@@ -1,0 +1,105 @@
+groups:
+  - name: synth-now-recording-rules
+    rules:
+      - record: synthnow:vector_search_duration_seconds:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(synthnow_vector_search_duration_seconds_bucket[5m])) by (le, model_code, reference_role)
+          )
+      - record: synthnow:audio_job_processing_seconds:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(synthnow_audio_job_processing_seconds_bucket[5m])) by (le, outcome)
+          )
+      - record: synthnow:http_request_duration_seconds:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(synthnow_http_request_duration_seconds_bucket[5m])) by (le, route)
+          )
+  - name: synth-now-warning-alerts
+    rules:
+      - alert: SynthNowAudioQueueBacklog
+        expr: synthnow_audio_job_queue_depth > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: audio-worker
+          runbook: audio-queue-backlog
+        annotations:
+          summary: "Synth Now audio-job queue backlog is above 100"
+          description: "Queued audio jobs have remained above the initial capacity threshold for 10 minutes. Review worker capacity, failure rate, and source/object-storage latency."
+      - alert: SynthNowVectorSearchLatencyHigh
+        expr: synthnow:vector_search_duration_seconds:p95_5m > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: vector-search
+          runbook: vector-search-latency
+        annotations:
+          summary: "Synth Now vector-search p95 latency is above 500 ms"
+          description: "A model/role retrieval path is slower than its initial objective. Review pgvector index health, HNSW settings, database load, and candidate filtering."
+      - alert: SynthNowAudioWorkerFailures
+        expr: sum(rate(synthnow_audio_jobs_total{state="failed"}[15m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: audio-worker
+          runbook: audio-worker-failures
+        annotations:
+          summary: "Synth Now audio worker is recording failures"
+          description: "Audio jobs are repeatedly failing. Inspect safe worker error classes, upload/object storage reachability, and decoder health."
+  - name: synth-now-critical-alerts
+    rules:
+      - alert: SynthNowVectorSearchLatencyCritical
+        expr: synthnow:vector_search_duration_seconds:p95_5m > 1.5
+        for: 5m
+        labels:
+          severity: critical
+          service: vector-search
+          runbook: vector-search-latency
+        annotations:
+          summary: "Synth Now vector-search p95 latency is above 1.5 seconds"
+          description: "Critical retrieval latency has persisted for 5 minutes. Check database saturation, pgvector index availability, query-plan regressions, and recent deployment changes."
+      - alert: SynthNowAudioQueueCritical
+        expr: synthnow_audio_job_queue_depth > 500
+        for: 10m
+        labels:
+          severity: critical
+          service: audio-worker
+          runbook: audio-queue-backlog
+        annotations:
+          summary: "Synth Now audio-job queue backlog is above 500"
+          description: "Critical analysis backlog has persisted for 10 minutes. Investigate worker availability, queue leases, storage access, and rate controls."
+      - alert: SynthNowAudioWorkerFailureCritical
+        expr: sum(rate(synthnow_audio_jobs_total{state="failed"}[15m])) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          service: audio-worker
+          runbook: audio-worker-failures
+        annotations:
+          summary: "Synth Now audio worker failure rate is critically elevated"
+          description: "Worker failures are above 0.05 jobs per second for 10 minutes. Pause unsafe processing if needed and inspect the latest deployment and dependency health."
+      - alert: SynthNowApiErrorRateHigh
+        expr: |
+          sum(rate(synthnow_http_requests_total{status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(synthnow_http_requests_total[5m])), 1) > 0.02
+        for: 10m
+        labels:
+          severity: critical
+          service: api
+          runbook: api-error-rate
+        annotations:
+          summary: "Synth Now API 5xx rate is above 2%"
+          description: "The API error rate is above its initial threshold. Check the latest rollout, PostgreSQL reachability, Redis fallback behavior, and worker/API logs."
+      - alert: SynthNowApiUnavailable
+        expr: up{job="synth-now-api"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          service: api
+          runbook: api-unavailable
+        annotations:
+          summary: "Synth Now API scrape target is unavailable"
+          description: "Prometheus has been unable to scrape the API for 3 minutes. Verify pods, service endpoints, network policy, and metrics token configuration."

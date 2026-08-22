@@ -32,6 +32,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+cloudflare-api/.dev.vars
+cloudflare-api/.wrangler/
+reference-fastapi-platform/private_uploads/
+reference-fastapi-platform/*.sqlite
+reference-fastapi-platform/*.db
 
 # typescript
 *.tsbuildinfo

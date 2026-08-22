@@ -1,0 +1,9 @@
+# Chaos Engineering Research Notes
+
+Gremlin recommends Health Checks in scenarios. Its documentation describes health checks as automatic halt conditions that verify the system is healthy enough to continue, validates a steady baseline, and confirms recovery before the next experiment. Synth Now will require baseline, continuous, and recovery checks; a failed control stops the experiment and triggers the incident response workflow. Source: https://www.gremlin.com/docs/fault-injection-scenarios
+
+LitmusChaos defines probes as pluggable checks contributing to an experiment verdict. It supports command, Kubernetes, HTTP, and Prometheus probe types and allows start-of-test, end-of-test, edge, continuous, and on-chaos execution modes. Synth Now will use these concepts for non-mutating baseline/recovery checks and bounded abort conditions. Source: https://litmuschaos.github.io/litmus/experiments/concepts/chaos-resources/probes/litmus-probes/
+
+AWS disaster recovery guidance recognizes multiple recovery strategies and recommends continuous validation of resilience objectives. Synth Now’s experiments remain staging-only until specific production tests are approved through a separately scoped change process. Source: https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+
+Interactive topology verification: the self-contained HTML map loaded successfully, displayed the primary and secondary AWS regions, and clicking the primary Aurora PostgreSQL + pgvector writer updated the detail pane with the expected canonical-data, fenced-failover, and GD-2 latency-experiment notes. The static Mermaid PNG also rendered successfully. The map marks global traffic steering as a prerequisite because it is not present in the current Terraform root.

@@ -1,0 +1,26 @@
+# Copy to terraform.tfvars only in a secure working directory. Do not commit real bucket names,
+# credentials, Redis tokens, or AWS account-specific values.
+project_name         = "niko-synth-now"
+environment          = "production"
+primary_region       = "us-east-1"
+secondary_region     = "us-west-2"
+primary_vpc_cidr     = "10.20.0.0/16"
+secondary_vpc_cidr   = "10.30.0.0/16"
+artifact_bucket_name = "REPLACE-WITH-UNIQUE-PRIVATE-ARTIFACT-BUCKET"
+logs_bucket_name     = "REPLACE-WITH-UNIQUE-PRIVATE-LOG-BUCKET"
+
+# Supply through a secure variable set or shell environment, never in this file:
+# TF_VAR_redis_auth_token
+# TF_VAR_aurora_master_username
+
+# Pin only after checking the selected engine version is available in both regions and supports
+# the required pgvector extension version.
+aurora_engine_version = "16.4"
+eks_version           = "1.31"
+
+# Optional operator alert target. PagerDuty routing remains in the Kubernetes Alertmanager setup.
+# alert_email = "operations@example.com"
+
+tags = {
+  Owner = "Niko The Great"
+}

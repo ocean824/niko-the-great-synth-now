@@ -1,0 +1,100 @@
+name: Staging Terraform Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Choose plan, verify-existing, or canary. Canary creates and destroys only a uniquely named private S3 fixture."
+        required: true
+        type: choice
+        options: [plan, verify-existing, canary]
+      canary_confirmation:
+        description: "Required only for canary: type YES-STAGING-ONLY"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # Required for short-lived AWS OIDC credentials; no long-lived AWS keys.
+
+jobs:
+  terratest:
+    name: Staging Terratest (${{ inputs.test_mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: staging # Configure required reviewers and branch/tag rules in GitHub environment settings.
+    concurrency:
+      group: synth-now-staging-terratest
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.5"
+          terraform_wrapper: false
+
+      - name: Configure temporary AWS credentials for isolated staging account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_TERRATEST_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_STAGING_PRIMARY_REGION }}
+          role-session-name: synth-now-terratest-${{ github.run_id }}
+          role-duration-seconds: 3600
+
+      - name: Materialize secure staging Terraform variables
+        if: inputs.test_mode != 'canary'
+        env:
+          STAGING_TERRAFORM_TFVARS_B64: ${{ secrets.STAGING_TERRAFORM_TFVARS_B64 }}
+        run: |
+          test -n "$STAGING_TERRAFORM_TFVARS_B64"
+          umask 077
+          printf '%s' "$STAGING_TERRAFORM_TFVARS_B64" | base64 --decode > "$RUNNER_TEMP/synth-now-staging.tfvars"
+
+      - name: Download Terratest dependencies
+        working-directory: infra/aws/test
+        run: go mod download
+
+      - name: Run selected guarded test mode
+        working-directory: infra/aws/test
+        env:
+          SYNTH_NOW_TERRATEST_ENVIRONMENT: staging
+          SYNTH_NOW_TERRATEST_APPROVED_ACCOUNT_ID: ${{ vars.AWS_STAGING_ACCOUNT_ID }}
+          SYNTH_NOW_TERRATEST_PRIMARY_REGION: ${{ vars.AWS_STAGING_PRIMARY_REGION }}
+          SYNTH_NOW_TERRATEST_VAR_FILE: ${{ runner.temp }}/synth-now-staging.tfvars
+          SYNTH_NOW_TERRATEST_STATE_BUCKET: ${{ vars.AWS_STAGING_TF_STATE_BUCKET }}
+          SYNTH_NOW_TERRATEST_STATE_KEY: ${{ vars.AWS_STAGING_TF_STATE_KEY }}
+          SYNTH_NOW_TERRATEST_STATE_REGION: ${{ vars.AWS_STAGING_TF_STATE_REGION }}
+          SYNTH_NOW_TERRATEST_STATE_LOCK_TABLE: ${{ vars.AWS_STAGING_TF_STATE_LOCK_TABLE }}
+          SYNTH_NOW_TERRATEST_ALLOW_APPLY: ${{ inputs.canary_confirmation }}
+        run: |
+          set -euo pipefail
+          case "${{ inputs.test_mode }}" in
+            plan)
+              export SYNTH_NOW_TERRATEST_PLAN=true
+              go test -v -run '^TestStagingPlan$' -timeout 30m
+              ;;
+            verify-existing)
+              export SYNTH_NOW_TERRATEST_VERIFY_EXISTING=true
+              go test -v -run '^TestExistingStagingOutputs$' -timeout 15m
+              ;;
+            canary)
+              export SYNTH_NOW_TERRATEST_CANARY=true
+              go test -v -run '^TestPrivateBucketCanary$' -timeout 30m
+              ;;
+            *)
+              echo "Unsupported test mode" >&2
+              exit 2
+              ;;
+          esac
+
+      - name: Remove temporary variables file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/synth-now-staging.tfvars"

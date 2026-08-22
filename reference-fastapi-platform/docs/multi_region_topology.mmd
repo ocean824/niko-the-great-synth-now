@@ -1,0 +1,54 @@
+flowchart LR
+  Users["Authorized users / clients"]
+  Traffic["Global traffic steering\n(operational prerequisite; not yet Terraform-provisioned)"]
+  Users --> Traffic
+
+  subgraph P["Primary AWS Region"]
+    direction TB
+    PVPC["Private VPC\nMulti-AZ"]
+    PEKS["Private EKS\nAPI + audio workers"]
+    PAurora[("Aurora PostgreSQL + pgvector\nGlobal DB writer")]
+    PRedis[("ElastiCache Redis\nGlobal Datastore primary")]
+    PS3["Encrypted S3\nArtifacts + logs"]
+    PECR["ECR\nImmutable images"]
+    PObs["CloudWatch + Prometheus\nAlertmanager / Grafana"]
+    PIRSA["EKS OIDC / IRSA\nleast-privilege roles"]
+    PVPC --> PEKS
+    PEKS --> PAurora
+    PEKS --> PRedis
+    PEKS --> PS3
+    PEKS --> PECR
+    PEKS --> PIRSA
+    PEKS --> PObs
+  end
+
+  subgraph S["Secondary AWS Region"]
+    direction TB
+    SVPC["Private VPC\nMulti-AZ"]
+    SEKS["Private EKS\nWarm standby / recovery"]
+    SAurora[("Aurora PostgreSQL + pgvector\nGlobal DB secondary reader")]
+    SRedis[("ElastiCache Redis\nGlobal Datastore secondary")]
+    SS3["Encrypted S3\nReplicated artifacts + logs"]
+    SECR["ECR\nReplicated images"]
+    SObs["CloudWatch + Prometheus\nAlertmanager / Grafana"]
+    SIRSA["EKS OIDC / IRSA\nleast-privilege roles"]
+    SVPC --> SEKS
+    SEKS --> SAurora
+    SEKS --> SRedis
+    SEKS --> SS3
+    SEKS --> SECR
+    SEKS --> SIRSA
+    SEKS --> SObs
+  end
+
+  Traffic -. controlled route shift .-> PEKS
+  Traffic -. recovery route shift .-> SEKS
+  PAurora == "global replication" ==> SAurora
+  PRedis == "global datastore replication" ==> SRedis
+  PS3 == "encrypted replication" ==> SS3
+  PECR == "image replication" ==> SECR
+  PObs -. "regional telemetry" .-> SObs
+
+  style P fill:#eef6ff,stroke:#0c4a6e,stroke-width:2px
+  style S fill:#f7f0ff,stroke:#6b21a8,stroke-width:2px
+  style Traffic fill:#fff7e6,stroke:#b45309,stroke-width:2px

@@ -37,8 +37,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: cloudflare-api/pnpm-lock.yaml
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: ./node_modules/.bin/tsc --noEmit

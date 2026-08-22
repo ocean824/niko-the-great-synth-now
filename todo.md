@@ -19,3 +19,4 @@
 - [x] Publish the completed rebuild to a private GitHub repository only after validation and final packaging.
 - [x] Publish the required GitHub Actions workflow through a workflow-compatible fallback and document the permission step for activation.
 - [ ] Activate the versioned GitHub Actions workflow in the private repository after restored GitHub authorization.
+- [ ] Publish the CI workflow after user-confirmed GitHub Workflows permission enablement.
